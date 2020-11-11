@@ -3,7 +3,7 @@ pub mod auth {
         auth.refresh_token (id) {
             id -> Uuid,
             user_id -> Uuid,
-            refresh_token -> Uuid,
+            token -> Uuid,
         }
     }
 
@@ -20,8 +20,5 @@ pub mod auth {
 
     joinable!(refresh_token -> user (user_id));
 
-    allow_tables_to_appear_in_same_query!(
-        refresh_token,
-        user,
-    );
+    allow_tables_to_appear_in_same_query!(refresh_token, user,);
 }
