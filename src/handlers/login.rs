@@ -27,21 +27,24 @@ impl LoginRequest {
 }
 
 pub fn login(args: LoginRequest, connection: &PgConnection) -> Result<LoginResponse, String> {
-    user::table
+    let users = user::table
         .limit(1)
         .filter(email.eq(&args.login))
         .load::<User>(connection)
-        .map_err(|e| e.to_string())
-        .and_then(|users| match users.first() {
-            Some(user) => match verify(&args.password, &user.password) {
-                Ok(true) => Ok(LoginResponse {
-                    // TODO: Implement me
-                    access_token: "TMP".to_string(),
-                    refresh_token: "TMP".to_string(),
-                }),
-                Ok(false) => Err("Invalid password".to_string()),
-                Err(err) => Err(err.to_string()),
-            },
-            None => Err("User not found".to_string()),
-        })
+        .map_err(|e| e.to_string())?;
+
+    let hash = match users.first() {
+        Some(user) => Ok(&user.password),
+        None => Err("User not found".to_string()),
+    }?;
+
+    match verify(&args.password, hash) {
+        Ok(true) => Ok(LoginResponse {
+            // TODO: Implement me
+            access_token: "TMP".to_string(),
+            refresh_token: "TMP".to_string(),
+        }),
+        Ok(false) => Err("Invalid password".to_string()),
+        Err(err) => Err(err.to_string()),
+    }
 }
