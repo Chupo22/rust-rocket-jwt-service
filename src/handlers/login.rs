@@ -2,12 +2,12 @@
 use crate::models::User;
 use crate::schema::auth::user;
 use bcrypt::verify;
+use diesel;
 use diesel::ExpressionMethods;
 use diesel::PgConnection;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use user::dsl::email;
-use diesel;
 
 pub struct LoginRequest {
     pub login: String,
@@ -27,26 +27,21 @@ impl LoginRequest {
 }
 
 pub fn login(args: LoginRequest, connection: &PgConnection) -> Result<LoginResponse, String> {
-    let password = &args.password;
-    let response = user::table
+    user::table
         .limit(1)
-        .filter(email.eq(args.login))
+        .filter(email.eq(&args.login))
         .load::<User>(connection)
-        .and_then(|users| match users.into_iter().next() {
-            Some(user) => Ok(user),
-            None => Err(diesel::result::Error::NotFound)
+        .map_err(|e| e.to_string())
+        .and_then(|users| match users.first() {
+            Some(user) => match verify(&args.password, &user.password) {
+                Ok(true) => Ok(LoginResponse {
+                    // TODO: Implement me
+                    access_token: "TMP".to_string(),
+                    refresh_token: "TMP".to_string(),
+                }),
+                Ok(false) => Err("Invalid password".to_string()),
+                Err(err) => Err(err.to_string()),
+            },
+            None => Err("User not found".to_string()),
         })
-        .map_err(|_| "User not found".to_string())
-        .map(|user| verify(password, &user.password))
-        .and_then(|check_result| match check_result {
-            Ok(true) => Ok(LoginResponse {
-                // TODO: Implement me
-                access_token: "TMP".to_string(),
-                refresh_token: "TMP".to_string(),
-            }),
-            Ok(false) => Err("Invalid password".to_string()),
-            Err(err) => Err(err.to_string())
-        });
-
-    response
 }
